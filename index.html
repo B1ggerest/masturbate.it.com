@@ -1,83 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Stroke the Stick</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #222;
-      touch-action: none; /* important for mobile */
-    }
+<meta charset="UTF-8">
+<title>Stroke the Stick</title>
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  background: #222;
+  color: white;
+  font-family: sans-serif;
+  touch-action: none;
+}
 
-    #stick-container {
-      position: relative;
-      width: 40px;
-      height: 300px;
-      background: #6b4f2a;
-      border-radius: 20px;
-      overflow: hidden;
-    }
+#game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
-    #stroke {
-      position: absolute;
-      width: 100%;
-      height: 0;
-      bottom: 0;
-      background: rgba(255, 255, 255, 0.5);
-      transition: height 0.05s;
-    }
-  </style>
+#stick-container {
+  position: relative;
+  width: 40px;
+  height: 300px;
+  background: #6b4f2a;
+  border-radius: 20px;
+  overflow: visible;
+}
+
+#stroke {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0;
+  background: rgba(255,255,255,0.5);
+}
+
+.sap {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+#meter {
+  width: 20px;
+  height: 300px;
+  border: 2px solid white;
+  margin-left: 10px;
+  position: relative;
+}
+
+#meter-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0;
+  background: white;
+}
+
+#leaderboard {
+  min-width: 200px;
+}
+</style>
 </head>
+
 <body>
 
-  <div id="stick-container">
-    <div id="stroke"></div>
+<div id="game">
+  <div style="display:flex;">
+    <div id="stick-container">
+      <div id="stroke"></div>
+    </div>
+    <div id="meter">
+      <div id="meter-fill"></div>
+    </div>
   </div>
+  <p>Stroke to fill meter</p>
+</div>
 
-  <script>
-    const stick = document.getElementById("stick-container");
-    const stroke = document.getElementById("stroke");
+<div id="leaderboard">
+  <h3>Leaderboard</h3>
+  <ol id="scores"></ol>
+</div>
 
-    let isStroking = false;
+<script>
+const WORKER_URL = "https://odd-sun-3440.lolbiggerestlol.workers.dev";
+const stick = document.getElementById("stick-container");
+const stroke = document.getElementById("stroke");
+const meterFill = document.getElementById("meter-fill");
+const scoresEl = document.getElementById("scores");
 
-    function updateStroke(y) {
-      const rect = stick.getBoundingClientRect();
-      let height = rect.bottom - y;
-      height = Math.max(0, Math.min(height, rect.height));
-      stroke.style.height = height + "px";
-    }
+let stroking = false;
+let meter = 0;
+let lastY = null;
 
-    stick.addEventListener("mousedown", e => {
-      isStroking = true;
-      updateStroke(e.clientY);
-    });
+function update(y) {
+  const rect = stick.getBoundingClientRect();
+  let height = rect.bottom - y;
+  height = Math.max(0, Math.min(height, rect.height));
+  stroke.style.height = height + "px";
 
-    stick.addEventListener("mousemove", e => {
-      if (isStroking) updateStroke(e.clientY);
-    });
+  if (lastY !== null) {
+    meter += Math.abs(lastY - y) * 0.05;
+    meter = Math.min(meter, 100);
+    meterFill.style.height = meter + "%";
+    if (meter >= 100) explode();
+  }
+  lastY = y;
+}
 
-    document.addEventListener("mouseup", () => {
-      isStroking = false;
-    });
+function explode() {
+  meter = 0;
+  meterFill.style.height = "0%";
 
-    stick.addEventListener("touchstart", e => {
-      isStroking = true;
-      updateStroke(e.touches[0].clientY);
-    });
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElement("div");
+    s.className = "sap";
+    stick.appendChild(s);
 
-    stick.addEventListener("touchmove", e => {
-      if (isStroking) updateStroke(e.touches[0].clientY);
-    });
+    const angle = Math.random() * Math.PI;
+    const speed = Math.random() * 6 + 2;
+    let x = 0, y = 0;
 
-    document.addEventListener("touchend", () => {
-      isStroking = false;
-    });
-  </script>
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
 
+    const anim = setInterval(() => {
+      x += vx;
+      y += vy;
+      s.style.transform = `translate(${x}px, ${-y}px)`;
+    }, 16);
+
+    setTimeout(() => {
+      clearInterval(anim);
+      s.remove();
+    }, 800);
+  }
+
+  submitScore(100);
+}
+
+stick.addEventListener("mousedown", e => {
+  stroking = true;
+  lastY = e.clientY;
+});
+
+stick.addEventListener("mousemove", e => {
+  if (stroking) update(e.clientY);
+});
+
+document.addEventListener("mouseup", () => {
+  stroking = false;
+  lastY = null;
+});
+
+stick.addEventListener("touchstart", e => {
+  stroking = true;
+  lastY = e.touches[0].clientY;
+});
+
+stick.addEventListener("touchmove", e => {
+  if (stroking) update(e.touches[0].clientY);
+});
+
+document.addEventListener("touchend", () => {
+  stroking = false;
+  lastY = null;
+});
+
+async function submitScore(score) {
+  await fetch(`${WORKER_URL}/submit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ score })
+  });
+  loadScores();
+}
+
+async function loadScores() {
+  const res = await fetch(`${WORKER_URL}/leaderboard`);
+  const data = await res.json();
+  scoresEl.innerHTML = "";
+  data.forEach(s => {
+    const li = document.createElement("li");
+    li.textContent = s;
+    scoresEl.appendChild(li);
+  });
+}
+
+loadScores();
+</script>
 </body>
 </html>
