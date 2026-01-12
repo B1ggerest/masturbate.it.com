@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stroke the Stick</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #222;
+      touch-action: none; /* important for mobile */
+    }
+
+    #stick-container {
+      position: relative;
+      width: 40px;
+      height: 300px;
+      background: #6b4f2a;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    #stroke {
+      position: absolute;
+      width: 100%;
+      height: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.5);
+      transition: height 0.05s;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stick-container">
+    <div id="stroke"></div>
+  </div>
+
+  <script>
+    const stick = document.getElementById("stick-container");
+    const stroke = document.getElementById("stroke");
+
+    let isStroking = false;
+
+    function updateStroke(y) {
+      const rect = stick.getBoundingClientRect();
+      let height = rect.bottom - y;
+      height = Math.max(0, Math.min(height, rect.height));
+      stroke.style.height = height + "px";
+    }
+
+    stick.addEventListener("mousedown", e => {
+      isStroking = true;
+      updateStroke(e.clientY);
+    });
+
+    stick.addEventListener("mousemove", e => {
+      if (isStroking) updateStroke(e.clientY);
+    });
+
+    document.addEventListener("mouseup", () => {
+      isStroking = false;
+    });
+
+    stick.addEventListener("touchstart", e => {
+      isStroking = true;
+      updateStroke(e.touches[0].clientY);
+    });
+
+    stick.addEventListener("touchmove", e => {
+      if (isStroking) updateStroke(e.touches[0].clientY);
+    });
+
+    document.addEventListener("touchend", () => {
+      isStroking = false;
+    });
+  </script>
+
+</body>
+</html>
